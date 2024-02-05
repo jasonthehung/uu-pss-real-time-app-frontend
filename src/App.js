@@ -2,20 +2,25 @@ import "./App.css"
 import { useState, useEffect } from "react"
 import io from "socket.io-client"
 import { nanoid } from "nanoid"
-
-const userName = nanoid(4) // random value between 0 - 4
+import { set } from "mongoose"
 
 // const socket = io(URL, { autoConnect: false })
 const socket = io("http://localhost:8080")
+const userName = nanoid(4)
 
-socket.onAny((event, ...args) => {
-    console.log(event, args)
-})
+// socket.onAny((event, ...args) => {
+//     console.log(event, args)
+// })
 
 function App() {
-    const [room, setRoom] = useState("")
+    const [roomId, setRoomId] = useState("")
+    const [submittedRoom, setSubmittedRoom] = useState("")
     const [message, setMessage] = useState("")
     const [chat, setChat] = useState([])
+
+    const [host, setHost] = useState(false)
+    const [player, setPlayer] = useState(false)
+    const [joined, setJoined] = useState(false)
 
     const sendChat = (e) => {
         e.preventDefault()
@@ -23,23 +28,30 @@ function App() {
         setMessage("")
     }
 
-    const sendRoom = (e) => {
+    const createRoom = (e) => {
         e.preventDefault()
-        socket.emit("joinRoom", { name: "dummy_user", room: room })
-        setRoom("")
+        socket.emit("createRoom", { newRoom: roomId })
+        setRoomId("")
+        setSubmittedRoom(roomId)
+    }
+
+    const joinRoom = (e) => {
+        e.preventDefault()
+        socket.emit("joinRoom", { name: userName, room: roomId })
     }
 
     useEffect(() => {
         socket.on("chat", (payload) => {
             setChat([...chat, payload])
+            console.log(chat)
         })
 
-        socket.on("userList", (payload) => {
-            console.log(payload)
+        socket.on("roomError", (err) => {
+            console.log(err)
         })
 
-        socket.on("message", (payload) => {
-            console.log(payload)
+        socket.on("message", (msg) => {
+            console.log(msg)
         })
     })
 
@@ -47,7 +59,6 @@ function App() {
         <div className="App">
             <header className="App-header">
                 <h1>Hello Quizzy</h1>
-
                 {chat.map((payload, index) => {
                     return (
                         <p key={index}>
@@ -57,27 +68,68 @@ function App() {
                     )
                 })}
 
-                <form onSubmit={sendChat}>
-                    <input
-                        type="text"
-                        name="chat"
-                        placeholder="send text..."
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                    ></input>
-                    <button type="submit">Send</button>
-                </form>
+                {!player && !host && (
+                    <button
+                        onClick={() => {
+                            setPlayer(true)
+                        }}
+                    >
+                        Player
+                    </button>
+                )}
 
-                <form onSubmit={sendRoom}>
-                    <input
-                        type="text"
-                        name="room"
-                        placeholder="send room id..."
-                        value={room}
-                        onChange={(e) => setRoom(e.target.value)}
-                    ></input>
-                    <button type="submit">Send</button>
-                </form>
+                {!player && !host && (
+                    <button
+                        onClick={() => {
+                            setHost(true)
+                        }}
+                    >
+                        Game Host
+                    </button>
+                )}
+
+                {player && (
+                    <>
+                        <form onSubmit={sendChat}>
+                            <input
+                                type="text"
+                                name="message"
+                                placeholder="send message..."
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
+                            ></input>
+                            <button type="submit">Send</button>
+                        </form>
+                        <form onSubmit={joinRoom}>
+                            <input
+                                type="text"
+                                name="roomId"
+                                placeholder="Enter room id..."
+                                value={roomId}
+                                onChange={(e) => setRoomId(e.target.value)}
+                            ></input>
+                            <button type="submit">Join</button>
+                        </form>
+                    </>
+                )}
+
+                {host && (
+                    <>
+                        <form onSubmit={createRoom}>
+                            <input
+                                type="text"
+                                name="roomId"
+                                placeholder="Enter room id..."
+                                value={roomId}
+                                onChange={(e) => setRoomId(e.target.value)}
+                            ></input>
+                            <button type="submit">Create</button>
+                        </form>
+                        {submittedRoom && (
+                            <p>You created a roomId: {submittedRoom} </p>
+                        )}
+                    </>
+                )}
             </header>
         </div>
     )

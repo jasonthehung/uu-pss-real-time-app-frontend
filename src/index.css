@@ -19,6 +19,7 @@ input {
 button {
     font-size: larger;
     margin-left: 20px;
+    margin-bottom: 20px;
 }
 
 span {
